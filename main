@@ -20,24 +20,23 @@
 
 
 void Water_Lvl(void){
-ADCON0bits.CHS=0b0010;
 ADCON1= 0b00000000;
 ANSEL = 0b00000001;
-TRISA = 0b00000010;
+TRISA = 0b11111111;
 PIR1 = 0b00000000;
 PIR1bits.ADIF = 0;        //interrupt flag must be cleared by software
 PIE1bits.ADIE = 1;          //enables ADC interrupt
 ADCON0 = 0b10000001;    //GO is bit 1, enable is bit 0
+ADCON0bits.CHS=0b0010;
 TRISB = 0; // Set RB0 to output('0')
 PORTB = 0; //Set PORTB pins to logic ?0?
 __delay_ms(10);
-while(1){
     ADCON0bits.GO=1;            //starts the ADC conversion, automatically resets to 0 once it is done.
     __delay_ms(10);             //small, un-noticeable delay just so that GO register isn't read before the conversion is done
     while(1){
     if(ADCON0bits.GO==0){
         if(ADRESH<16){          //ADRESH contains the 8-most significant bits of the ADC result. Thus, each voltage threshold is 16 units apart
-            PORTB = 0b00000000;
+            PORTB = 0b00000000; 
             break;
         }
         if(ADRESH<32){
@@ -53,7 +52,7 @@ while(1){
               break;
         }
         if(ADRESH<80){
-            PORTB = 0b00000100;
+            PORTB = 0b00000100; //Stop pouring water here, healthy water level.
               break;
         }
         if(ADRESH<96){
@@ -101,13 +100,9 @@ while(1){
               break;
         }
     }
-    }
-  
 }
 return;
 }
-
-
 
 
 void WriteCommandToLCD(unsigned char);
