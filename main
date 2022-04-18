@@ -19,18 +19,15 @@
 #define LCD_Data_Bus_Dir   TRISB
 
 
-void ADC(void){
-//CM1CON0bits.C1ON=0;
-ADCON1= 0b00000000;
+void Water_Lvl(void){
 ADCON0bits.CHS=0b0010;
+ADCON1= 0b00000000;
 ANSEL = 0b00000001;
-//TRISA = 0b00000001;
-TRISA=2;
+TRISA = 0b00000010;
 PIR1 = 0b00000000;
 PIR1bits.ADIF = 0;        //interrupt flag must be cleared by software
 PIE1bits.ADIE = 1;          //enables ADC interrupt
 ADCON0 = 0b10000001;    //GO is bit 1, enable is bit 0
-ADCON0bits.CHS=1;
 TRISB = 0; // Set RB0 to output('0')
 PORTB = 0; //Set PORTB pins to logic ?0?
 __delay_ms(10);
