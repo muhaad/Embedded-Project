@@ -6,7 +6,7 @@
 #pragma config WDTE = OFF
 #pragma config MCLRE = OFF
 #pragma config LVP = OFF    //allows DS4 to be used
-#define _XTAL_FREQ   20000000
+#define _XTAL_FREQ   8000000
 
 
 
@@ -19,91 +19,80 @@
 #define LCD_Data_Bus_Dir   TRISB
 
 
-void Water_Lvl(void){
-ADCON1= 0b00000000;
-ANSEL = 0b00000001;
-TRISA = 0b11111111;
-PIR1 = 0b00000000;
-PIR1bits.ADIF = 0;        //interrupt flag must be cleared by software
-PIE1bits.ADIE = 1;          //enables ADC interrupt
-ADCON0 = 0b10000001;    //GO is bit 1, enable is bit 0
-ADCON0bits.CHS=0b0010;
-TRISB = 0; // Set RB0 to output('0')
-PORTB = 0; //Set PORTB pins to logic ?0?
-__delay_ms(10);
+void Water_Lvl(void){    
+    ADCON1= 0b00000000;
+    ANSEL = 0b00000001;
+    TRISA = 0b11111111;
+    PIR1 = 0b00000000;
+    PIR1bits.ADIF = 0;        //interrupt flag must be cleared by software
+    PIE1bits.ADIE = 1;          //enables ADC interrupt
+    ADCON0 = 0b10000001;    //GO is bit 1, enable is bit 0
+    ADCON0bits.CHS=0b0010; //AN2
+    TRISB = 0; // Set RB0 to output('0')
+    PORTB = 0; //Set PORTB pins to logic ?0?
+    __delay_ms(10);
     ADCON0bits.GO=1;            //starts the ADC conversion, automatically resets to 0 once it is done.
-    __delay_ms(10);             //small, un-noticeable delay just so that GO register isn't read before the conversion is done
+    __delay_ms(10); //small, un-noticeable delay just so that GO register isn't read before the conversion is done
+    
     while(1){
-    if(ADCON0bits.GO==0){
-        if(ADRESH<16){          //ADRESH contains the 8-most significant bits of the ADC result. Thus, each voltage threshold is 16 units apart
-            PORTB = 0b00000000; 
-            break;
-        }
-        if(ADRESH<32){
-            PORTB = 0b00000001;     //PORT B is the LEDs, which increment every 16 units of the ADC output
-              break;
-        }
-        if(ADRESH<48){
-            PORTB = 0b00000010;
-              break;               //break starts the new ADC conversion
-        }
-        if(ADRESH<64){
-            PORTB = 0b00000011;
-              break;
-        }
-        if(ADRESH<80){
-            PORTB = 0b00000100; //Stop pouring water here, healthy water level.
-              break;
-        }
-        if(ADRESH<96){
-            PORTB = 0b00000101;
-              break;
-        }
-         if(ADRESH<112){
-            PORTB = 0b00000110;
-              break;
-        }
-         if(ADRESH<128){
-            PORTB = 0b00000111;
-              break;
-        }
-         if(ADRESH<144){
-            PORTB = 0b00001000;
-              break;
-        }
-         if(ADRESH<160){
-            PORTB = 0b00001001;
-              break;
-        }
-         if(ADRESH<176){
-            PORTB = 0b00001010;
-              break;
-        }
-         if(ADRESH<192){
-            PORTB = 0b00001011;
-              break;
-        }
-         if(ADRESH<208){
-            PORTB = 0b00001100;
-              break;
-        }
-         if(ADRESH<224){
-            PORTB = 0b00001101;
-              break;
-        }
-         if(ADRESH<240){
-            PORTB = 0b00001110;
-              break;
-        }
-         if(ADRESH<=256){
-            PORTB = 0b00001111;
-              break;
+        if(ADCON0bits.GO==0){
+            if(ADRESH<80){
+                PORTB = 0b00000100; //Stop pouring water here, healthy water level.
+           
+                WriteCommandToLCD(0x3C);
+                WriteCommandToLCD(0x0C1);
+                char msg[] = "Refill Water";
+                WriteStringToLCD(msg);  
+                break;
+            }
+            else{  
+                WriteCommandToLCD(0x3C);
+                WriteCommandToLCD(0x0C1);
+                char msg[] = "Water lvl OK";
+                WriteStringToLCD(msg); 
+                break;
+            }
         }
     }
-}
-return;
+    return;
 }
 
+void Moisture_Lvl(void){    
+    
+    double moistureLvl;
+    
+    ADCON1= 0b00000000;
+    ANSEL = 0b00000001;
+    TRISA = 0b11111111;
+    PIR1 = 0b00000000;
+    PIR1bits.ADIF = 0;        //interrupt flag must be cleared by software
+    PIE1bits.ADIE = 1;          //enables ADC interrupt
+    ADCON0 = 0b10000001;    //GO is bit 1, enable is bit 0
+    ADCON0bits.CHS=0b0001; //AN1
+    TRISB = 0; // Set RB0 to output('0')
+    PORTB = 0; //Set PORTB pins to logic ?0?
+    __delay_ms(10);
+    ADCON0bits.GO=1;            //starts the ADC conversion, automatically resets to 0 once it is done.
+    __delay_ms(10); //small, un-noticeable delay just so that GO register isn't read before the conversion is done
+    
+    while(1){
+        if(ADCON0bits.GO==0){
+            if(ADRESH<614){
+                moistureLvl = ((ADRESH % 614) /614)* 100; // moistureLvl value between 0.0-100.0
+           
+                WriteCommandToLCD(0x3C);
+                WriteCommandToLCD(0x0C1);
+                char msg[] = "Moisture ";
+                WriteStringToLCD(msg);  
+                break;
+            }
+            else{  
+                break;
+            }
+        }
+    }
+    return;
+}
 
 void WriteCommandToLCD(unsigned char);
 void WriteDataToLCD(char);
@@ -174,15 +163,15 @@ int main(void)
    ANS0=1;
    
    TRISB = 0; // Set RB0 to output('0')
-    InitLCD();                // Initialize LCD in 8bit mode
-    char msg[] = "Temperature:10°C";
-    
-    ClearLCDScreen();          // Clear LCD screen
-    WriteStringToLCD(msg);  
-    WriteCommandToLCD(0x3C);
-    WriteCommandToLCD(0x0C1);
-    char msag[] = "Humidity:25%";
-    WriteStringToLCD(msag);  
+   InitLCD();                // Initialize LCD in 8bit mode
+//    char msg[] = "Temperature:10°C";
+//    
+//    ClearLCDScreen();          // Clear LCD screen
+//    WriteStringToLCD(msg);  
+//    WriteCommandToLCD(0x3C);
+//    WriteCommandToLCD(0x0C1);
+//    char msag[] = "Humidity:25%";
+//    WriteStringToLCD(msag);  
     
 	while(1){
     }
